@@ -1,0 +1,7 @@
+# This mission file has been moved to the repository root to avoid duplication.
+# Canonical mission files live in the `missions/` directory, e.g.:
+#   missions/example_mission.yaml
+# The satellite service mounts the chosen mission into the container at /app/mission.yaml
+# via the docker-compose MISSION variable (default: example_mission).
+
+# (kept intentionally empty to avoid duplication)

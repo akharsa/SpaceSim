@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 import numpy as np
+import yaml
 
 # Simple realtime/timewarp satellite publisher (lightweight, no astropy/poliastro)
 
@@ -16,12 +17,42 @@ TIME_SCALE = float(os.getenv('TIME_SCALE', '1.0'))  # 1.0 = realtime, >1 faster
 client = mqtt.Client()
 client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
-publish_topic = 'satellite/1/telemetry'
+# Satellite identifier (can be set per-container via SAT_ID env var)
+SAT_ID = os.getenv('SAT_ID', '1')
+publish_topic = f'satellite/{SAT_ID}/telemetry'
 print('Satellite simulator starting, publishing to', publish_topic)
+
+# Read initial parameters from environment (configured at build time)
+# Set these in your Dockerfile or docker-compose for each satellite instance.
+alt_env = os.getenv('ALT_KM')
+inc_env = os.getenv('INC_DEG')
+
+if alt_env is not None and inc_env is not None:
+    alt_km = float(alt_env)
+    inc_deg = float(inc_env)
+    print('Configured from env SAT_ID', SAT_ID, 'alt_km=', alt_km, 'inc_deg=', inc_deg)
+else:
+    # Try to load canonical mission file from repo root (mounted into container via compose)
+    mission_file = os.getenv('MISSION_FILE', '/app/mission.yaml')
+    try:
+        with open(mission_file, 'r') as f:
+            mission = yaml.safe_load(f)
+        sat_cfg = next((s for s in mission.get('satellites', []) if str(s.get('sat_id')) == str(SAT_ID)), None)
+        if sat_cfg:
+            alt_km = float(sat_cfg.get('initial', {}).get('alt_km', 500.0))
+            inc_deg = float(sat_cfg.get('initial', {}).get('inc_deg', 0.0))
+            print('Loaded mission SAT_ID', SAT_ID, 'alt_km=', alt_km, 'inc_deg=', inc_deg)
+        else:
+            print('No mission entry for SAT_ID', SAT_ID, '- using defaults')
+            alt_km = 500.0
+            inc_deg = 0.0
+    except Exception as e:
+        print('Failed to load mission file', mission_file, e)
+        alt_km = 500.0
+        inc_deg = 0.0
 
 # Simple circular orbit parameters
 RE = 6378.137  # Earth radius km
-alt_km = 500.0
 a = RE + alt_km
 mu = 398600.4418  # Earth gravitational parameter km^3/s^2
 n = math.sqrt(mu / (a ** 3))  # rad/s mean motion

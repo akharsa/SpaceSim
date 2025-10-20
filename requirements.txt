@@ -1,0 +1,9 @@
+# Top-level Python requirements for developer tools and repo utilities
+# These are for running the repo helper scripts and local dev tooling (not what runs inside the Docker images).
+# Install with: python3 -m pip install -r requirements.txt
+
+PyYAML>=6.0
+paho-mqtt>=1.6.1
+numpy>=1.25.0
+influxdb-client>=1.35.0
+docker>=6.0.0

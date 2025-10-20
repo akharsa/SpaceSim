@@ -1,0 +1,25 @@
+satellites:
+  - sat_id: 1
+    name: demo-sat-1
+    initial:
+      alt_km: 500.0
+      inc_deg: 0.0
+      raan_deg: 0.0
+      argp_deg: 0.0
+      true_anom_deg: 0.0
+  - sat_id: 2
+    name: demo-sat-2
+    initial:
+      alt_km: 700.0
+      inc_deg: 45.0
+      raan_deg: 0.0
+      argp_deg: 0.0
+      true_anom_deg: 90.0
+  - sat_id: 3
+    name: demo-sat-3
+    initial:
+      alt_km: 700.0
+      inc_deg: 45.0
+      raan_deg: 0.0
+      argp_deg: 0.0
+      true_anom_deg: 90.0
