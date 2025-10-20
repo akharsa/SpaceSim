@@ -181,6 +181,28 @@ while True:
     battery = max(0.0, 95.0 - mission_elapsed * 0.0001)
     attitude_q = [1.0, 0.0, 0.0, 0.0]
 
+    # Satellite operational status simulation
+    satellite_uptime = mission_elapsed  # Uptime in seconds since mission start
+    
+    # Mode simulation based on battery and time
+    if battery < 20.0:
+        satellite_mode = "fail"
+        attitude_mode = "detumbling"
+    elif mission_elapsed < 300:  # First 5 minutes
+        satellite_mode = "nominal" 
+        attitude_mode = "detumbling"
+    elif mission_elapsed < 600:  # Next 5 minutes
+        satellite_mode = "nominal"
+        attitude_mode = "solar_pointing"
+    else:
+        satellite_mode = "nominal"
+        attitude_mode = "nadir_pointing"
+
+    # Add some variation based on satellite ID
+    if SAT_ID == "2" and mission_elapsed > 1200:  # Sat-2 has issues after 20 min
+        satellite_mode = "fail"
+        attitude_mode = "detumbling"
+
     payload = {
         'sat_id': SAT_ID,
         'name': sat_name,
@@ -191,6 +213,12 @@ while True:
         'velocity_km_s': velocity_km_s,
         'battery_pct': battery,
         'attitude_q': attitude_q,
+        'satellite_status': {
+            'mode': satellite_mode,
+            'attitude_mode': attitude_mode,
+            'uptime_seconds': satellite_uptime,
+            'health': "nominal" if satellite_mode == "nominal" else "degraded"
+        },
         'orbital_elements': {
             'alt_km': alt_km,
             'inc_deg': inc_deg,

@@ -1,10 +1,10 @@
 {
   "id": null,
   "uid": "space-sim",
-  "title": "Satellite telemetry",
+  "title": "SpaceSim Single Satellite Dashboard",
   "timezone": "browser",
   "schemaVersion": 36,
-  "version": 1,
+  "version": 2,
   "refresh": "5s",
   "templating": {
     "list": [
@@ -23,50 +23,241 @@
   },
   "panels": [
     {
-      "type": "timeseries",
-      "title": "Position (km)",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "options": {},
+      "type": "stat",
+      "title": "Satellite Mode Status",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "text": "FAIL", "color": "red" }, "1": { "text": "NOMINAL", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
           "refId": "A",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_x_km\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_x_km\")"
-        },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"mode_numeric\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> last()\n  |> yield(name: \"mode\")"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Attitude Mode",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { 
+              "options": { 
+                "0": { "text": "DETUMBLING", "color": "orange" }, 
+                "1": { "text": "SOLAR POINT", "color": "yellow" }, 
+                "2": { "text": "NADIR POINT", "color": "green" } 
+              }, 
+              "type": "value" 
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "orange", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 2 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
         {
-          "refId": "B",
+          "refId": "A",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_y_km\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_y_km\")"
-        },
-        {
-          "refId": "C",
-          "queryType": "flux",
-          "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_z_km\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_z_km\")"
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"attitude_mode_numeric\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> last()\n  |> yield(name: \"attitude\")"
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "Battery (%)",
+      "title": "Battery Level (%)",
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "fieldConfig": { 
-        "defaults": {}, 
-        "overrides": []
-        },
-      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 30 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
       "targets": [
         {
           "refId": "A",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"battery\")"
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"battery\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Satellite Uptime",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "dtdurations"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"uptime_seconds\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"uptime\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Orbital Altitude (km)",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "lengthkm"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"altitude_km\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"altitude\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "True Anomaly (degrees)",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "degree"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"true_anomaly_deg\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"true_anomaly\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Position (km)",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "lengthkm"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_x_km\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_x\")"
+        },
+        {
+          "refId": "B",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_y_km\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_y\")"
+        },
+        {
+          "refId": "C",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_z_km\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_z\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Velocity (km/s)",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "velocitykmh"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"vel_x_km_s\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"vel_x\")"
+        },
+        {
+          "refId": "B",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"vel_y_km_s\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"vel_y\")"
+        },
+        {
+          "refId": "C",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"vel_z_km_s\")\n  |> filter(fn: (r) => r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"vel_z\")"
         }
       ]
     }
   ],
-  "tags": []
+  "tags": ["spacesim"],
+  "time": { "from": "now-15m", "to": "now" }
 }

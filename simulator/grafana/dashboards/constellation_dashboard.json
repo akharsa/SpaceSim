@@ -1,0 +1,343 @@
+{
+  "id": null,
+  "uid": "space-sim-constellation",
+  "title": "SpaceSim Constellation Dashboard",
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 2,
+  "refresh": "5s",
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Active Satellites",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 3 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["count"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\")\n  |> last()\n  |> group(columns: [\"sat_id\"])\n  |> count()\n  |> yield(name: \"active_satellites\")"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Satellites in Nominal Mode",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 3 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["count"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"mode_numeric\")\n  |> filter(fn: (r) => r._value == 1)\n  |> last()\n  |> group(columns: [\"sat_id\"])\n  |> count()\n  |> yield(name: \"nominal_satellites\")"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Average Battery Level",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 30 },
+              { "color": "green", "value": 50 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["mean"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\")\n  |> last()\n  |> mean()\n  |> yield(name: \"avg_battery\")"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Average Altitude",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "lengthkm"
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["mean"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"altitude_km\")\n  |> last()\n  |> mean()\n  |> yield(name: \"avg_altitude\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "All Satellites - Battery Level (%)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 30 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> group(columns: [\"sat_id\"])\n  |> yield(name: \"battery\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "All Satellites - Altitude (km)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "lengthkm"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"altitude_km\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> group(columns: [\"sat_id\"])\n  |> yield(name: \"altitude\")"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Satellite Status Overview",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { 
+              "options": { 
+                "0": { "text": "FAIL", "color": "red" }, 
+                "1": { "text": "NOMINAL", "color": "green" } 
+              }, 
+              "type": "value" 
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "sat_id" },
+            "properties": [{ "id": "displayName", "value": "Satellite ID" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "mode_numeric" },
+            "properties": [{ "id": "displayName", "value": "Mode" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "attitude_mode_numeric" },
+            "properties": [
+              { "id": "displayName", "value": "Attitude Mode" },
+              {
+                "id": "mappings",
+                "value": [
+                  { 
+                    "options": { 
+                      "0": { "text": "DETUMBLING", "color": "orange" }, 
+                      "1": { "text": "SOLAR POINT", "color": "yellow" }, 
+                      "2": { "text": "NADIR POINT", "color": "green" } 
+                    }, 
+                    "type": "value" 
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "battery_pct" },
+            "properties": [
+              { "id": "displayName", "value": "Battery %" },
+              { "id": "unit", "value": "percent" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "uptime_seconds" },
+            "properties": [
+              { "id": "displayName", "value": "Uptime" },
+              { "id": "unit", "value": "dtdurations" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "altitude_km" },
+            "properties": [
+              { "id": "displayName", "value": "Altitude (km)" },
+              { "id": "unit", "value": "lengthkm" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "desc": false, "displayName": "Satellite ID" }]
+      },
+      "transformations": [
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "sat_id": { "aggregations": [], "operation": "groupby" },
+              "_value": { "aggregations": ["lastNotNull"], "operation": "aggregate" },
+              "_field": { "aggregations": [], "operation": "groupby" }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": { "sat_id": 0 },
+            "renameByName": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\")\n  |> filter(fn: (r) => r._field == \"mode_numeric\" or r._field == \"attitude_mode_numeric\" or r._field == \"battery_pct\" or r._field == \"uptime_seconds\" or r._field == \"altitude_km\")\n  |> last()\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> yield(name: \"status\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "All Satellites - Operational Mode",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [
+            { 
+              "options": { 
+                "0": { "text": "FAIL", "color": "red" }, 
+                "1": { "text": "NOMINAL", "color": "green" } 
+              }, 
+              "type": "value" 
+            }
+          ],
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "auto"
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"mode_numeric\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> group(columns: [\"sat_id\"])\n  |> yield(name: \"mode\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "All Satellites - Uptime",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "dtdurations"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"uptime_seconds\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> group(columns: [\"sat_id\"])\n  |> yield(name: \"uptime\")"
+        }
+      ]
+    }
+  ],
+  "tags": ["spacesim", "constellation"],
+  "time": { "from": "now-15m", "to": "now" }
+}

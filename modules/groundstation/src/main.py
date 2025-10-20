@@ -58,6 +58,27 @@ def on_message(client, userdata, msg):
             if 'true_anom_deg' in orb:
                 p.field('true_anomaly_deg', float(orb['true_anom_deg']))
         
+        # Satellite status fields
+        if 'satellite_status' in payload:
+            status = payload['satellite_status']
+            
+            # Convert mode to numeric for easier querying
+            mode_map = {'nominal': 1, 'fail': 0}
+            p.field('mode_numeric', mode_map.get(status.get('mode', 'nominal'), 1))
+            
+            # Convert attitude mode to numeric
+            attitude_map = {'detumbling': 0, 'solar_pointing': 1, 'nadir_pointing': 2}
+            p.field('attitude_mode_numeric', attitude_map.get(status.get('attitude_mode', 'detumbling'), 0))
+            
+            # Store uptime
+            if 'uptime_seconds' in status:
+                p.field('uptime_seconds', float(status['uptime_seconds']))
+            
+            # Store as tags for filtering
+            p.tag('mode', status.get('mode', 'nominal'))
+            p.tag('attitude_mode', status.get('attitude_mode', 'detumbling'))
+            p.tag('health', status.get('health', 'nominal'))
+        
         # Use wall timestamp for Grafana time-series compatibility
         # This ensures data appears in Grafana at the correct wall-clock time
         timestamp_field = payload.get('wall_timestamp', payload.get('timestamp'))
