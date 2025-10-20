@@ -1,0 +1,18 @@
+services:
+  visualizer:
+    build: ./visualizer
+    container_name: spacesim-visualizer
+    ports:
+      - '8081:8080'
+    depends_on:
+      - mosquitto
+      - influxdb
+      - telemetry_bridge
+    environment:
+      - PORT=8080
+      - TELEMETRY_URL=http://telemetry_bridge:5000/telemetry
+      - CESIUM_ION_TOKEN=${CESIUM_ION_TOKEN:-}
+      - NODE_ENV=${NODE_ENV:-production}
+    volumes:
+      # Mount public directory for live editing in development
+      - ./visualizer/public:/app/public:ro

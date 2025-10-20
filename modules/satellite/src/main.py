@@ -35,7 +35,7 @@ def on_message(client, userdata, msg):
         except Exception as e:
             print(f'Failed to parse mission time: {e}')
 
-client = mqtt.Client()
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.on_message = on_message
 client.connect(MQTT_BROKER, MQTT_PORT, 60)
 client.subscribe('mission/time')
@@ -162,6 +162,7 @@ frequency = 1.0  # Hz wall clock
 
 while True:
     loop_start = time.time()
+    wall_dt = 1.0 / frequency  # Define wall clock delta time
     
     # Use mission elapsed time instead of local simulation time
     if not mission_time_state['synchronized']:
@@ -193,7 +194,9 @@ while True:
         'orbital_elements': {
             'alt_km': alt_km,
             'inc_deg': inc_deg,
-            'true_anom_deg': math.degrees(theta) % 360
+            'true_anom_deg': math.degrees(theta) % 360,
+            'raan_deg': raan_deg,
+            'argp_deg': argp_deg
         }
     }
 

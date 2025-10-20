@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>SpaceSim Visualizer</title>
+    <style>
+        html,
+        body,
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(42, 42, 42, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-family: sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        #controls button {
+            background: #48b;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #controls button:hover {
+            background: #5ac;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.105.0/Build/Cesium/Widgets/widgets.css" />
+</head>
+
+<body>
+    <div id="cesiumContainer"></div>
+    <div id="controls">
+        <div><strong>SpaceSim Controls</strong></div>
+        <button onclick="focusOnSatellites()">Focus on Satellites</button>
+        <button onclick="resetView()">Reset View</button>
+        <div id="missionTime">Mission Time: --</div>
+        <div id="timeScale">Time Scale: --</div>
+        <div id="satelliteCount">Satellites: 0</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/cesium@1.105.0/Build/Cesium/Cesium.js"></script>
+    <script>
+        // Set Cesium Ion token if provided via server
+        fetch('/cesium-token')
+            .then(res => res.text())
+            .then(token => {
+                if (token && token !== 'undefined') {
+                    Cesium.Ion.defaultAccessToken = token;
+                }
+            })
+            .catch(e => console.warn('No Cesium token available, using default imagery'));
+
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkMDFiZGM3Mi1iMjEzLTQwMTMtOTEyNS1mMjBiMDljYWFkNGUiLCJpZCI6MzUyMjg4LCJpYXQiOjE3NjA5NzA2MTR9.Gnss-6ftbJn9rivjkDo2xv7qsmXjnipp1EYAh5-ojKs';
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            timeline: false,        // Disable timeline - we control time via mission service
+            animation: false,       // Disable animation controls
+            sceneModePicker: true,
+            baseLayerPicker: true,
+            homeButton: true,
+            fullscreenButton: true,
+            vrButton: false
+        });
+        
+        // Set initial camera view to show orbital altitude
+        viewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(0.0, 0.0, 15000000) // 15,000 km altitude for orbital view
+        });
+
+        const TELEMETRY_ENDPOINT = '/telemetry';
+        let missionTimeInfo = null;
+
+        async function fetchTelemetry() {
+            try {
+                const res = await fetch(TELEMETRY_ENDPOINT);
+                const data = await res.json();
+                return data;
+            } catch (e) {
+                console.warn('telemetry fetch failed', e);
+                return [];
+            }
+        }
+
+        // Extract mission time from telemetry data
+        function updateMissionTime(telemetry) {
+            if (telemetry.length > 0) {
+                const sample = telemetry[0];
+                if (sample.mission_time) {
+                    const missionDate = new Date(sample.mission_time);
+                    const timeScale = sample.time_scale || 1.0;
+                    document.getElementById('missionTime').textContent = `Mission Time: ${missionDate.toISOString().slice(0, 19)}Z`;
+                    document.getElementById('timeScale').textContent = `Time Scale: ${timeScale}x`;
+                }
+            }
+        }
+
+        const markers = {};
+
+        async function update() {
+            let telemetry = await fetchTelemetry();
+            // normalize to array
+            if (!Array.isArray(telemetry)) {
+                if (telemetry && typeof telemetry === 'object') {
+                    // could be an error envelope or a mapping of sat_id->payload
+                    if (telemetry.error) {
+                        console.warn('telemetry endpoint returned error', telemetry);
+                        telemetry = [];
+                    } else {
+                        telemetry = Object.values(telemetry);
+                    }
+                } else {
+                    telemetry = [];
+                }
+            }
+
+            telemetry.forEach(msg => {                
+                const id = msg.sat_id || msg.id || 'sat';
+                const pos = msg.position_km || [0, 0, 0];
+                
+                // Convert ECEF coordinates (km) to Cesium Cartesian3 (meters)
+                // The satellite positions are already in ECEF coordinates from Earth center
+                const x_m = pos[0] * 1000; // convert km to meters
+                const y_m = pos[1] * 1000;
+                const z_m = pos[2] * 1000;
+                const cart = new Cesium.Cartesian3(x_m, y_m, z_m);
+                
+                if (!markers[id]) {
+                    markers[id] = viewer.entities.add({
+                        id: id,
+                        position: cart,
+                        point: { 
+                            pixelSize: 12, 
+                            color: Cesium.Color.YELLOW,
+                            outlineColor: Cesium.Color.BLACK,
+                            outlineWidth: 2,
+                            heightReference: Cesium.HeightReference.NONE
+                        },
+                        label: {
+                            text: `SAT-${id}`,
+                            font: '12pt Helvetica',
+                            pixelOffset: new Cesium.Cartesian2(0, -40),
+                            fillColor: Cesium.Color.WHITE,
+                            outlineColor: Cesium.Color.BLACK,
+                            outlineWidth: 2,
+                            style: Cesium.LabelStyle.FILL_AND_OUTLINE
+                        }
+                    });
+                } else {
+                    markers[id].position = cart;
+                }
+            });
+        }
+
+        // Control functions
+        function focusOnSatellites() {
+            const satellites = Object.values(markers);
+            if (satellites.length > 0) {
+                const positions = satellites.map(sat => sat.position._value || sat.position);
+                const boundingSphere = Cesium.BoundingSphere.fromPoints(positions);
+                viewer.camera.viewBoundingSphere(boundingSphere, new Cesium.HeadingPitchRange(0, -0.5, boundingSphere.radius * 2));
+            }
+        }
+        
+        function resetView() {
+            viewer.camera.setView({
+                destination: Cesium.Cartesian3.fromDegrees(0.0, 0.0, 15000000)
+            });
+        }
+        
+        // Update satellite count display
+        function updateSatelliteCount() {
+            document.getElementById('satelliteCount').textContent = `Satellites: ${Object.keys(markers).length}`;
+        }
+
+        async function update() {
+            let telemetry = await fetchTelemetry();
+            // normalize to array
+            if (!Array.isArray(telemetry)) {
+                if (telemetry && typeof telemetry === 'object') {
+                    // could be an error envelope or a mapping of sat_id->payload
+                    if (telemetry.error) {
+                        console.warn('telemetry endpoint returned error', telemetry);
+                        telemetry = [];
+                    } else {
+                        telemetry = Object.values(telemetry);
+                    }
+                } else {
+                    telemetry = [];
+                }
+            }
+
+            telemetry.forEach(msg => {
+                console.log(msg);
+                const id = msg.sat_id || msg.id || 'sat';
+                const name = msg.name || `SAT-${id}`;
+                const pos = msg.position_km || [0, 0, 0];
+                
+                // Convert ECEF coordinates (km) to Cesium Cartesian3 (meters)
+                // The satellite positions are already in ECEF coordinates from Earth center
+                const x_m = pos[0] * 1000; // convert km to meters
+                const y_m = pos[1] * 1000;
+                const z_m = pos[2] * 1000;
+                const cart = new Cesium.Cartesian3(x_m, y_m, z_m);
+                
+                // Get orbital info for display
+                const orbital = msg.orbital_elements || {};
+                const alt = orbital.alt_km ? `${orbital.alt_km.toFixed(0)}km` : '';
+                const inc = orbital.inc_deg ? `${orbital.inc_deg.toFixed(1)}°` : '';
+                const labelText = alt && inc ? `${name}\n${alt} @ ${inc}` : name;
+                
+                if (!markers[id]) {
+                    markers[id] = viewer.entities.add({
+                        id: id,
+                        position: cart,
+                        point: { 
+                            pixelSize: 12, 
+                            color: Cesium.Color.YELLOW,
+                            outlineColor: Cesium.Color.BLACK,
+                            outlineWidth: 2,
+                            heightReference: Cesium.HeightReference.NONE
+                        },
+                        label: {
+                            text: labelText,
+                            font: '11pt Helvetica',
+                            pixelOffset: new Cesium.Cartesian2(0, -40),
+                            fillColor: Cesium.Color.WHITE,
+                            outlineColor: Cesium.Color.BLACK,
+                            outlineWidth: 2,
+                            style: Cesium.LabelStyle.FILL_AND_OUTLINE
+                        }
+                    });
+                } else {
+                    markers[id].position = cart;
+                    markers[id].label.text = labelText;
+                }
+            });
+            
+            updateSatelliteCount();
+            updateMissionTime(telemetry);
+        }
+
+        setInterval(update, 1000);
+        
+        // Initial update
+        update();
+    </script>
+</body>
+
+</html>

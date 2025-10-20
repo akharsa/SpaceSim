@@ -40,7 +40,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
 
   mission-time:
-    build: services/mission_time
+    build: ./mission_time
     container_name: spacesim-mission-time
     depends_on:
       - mosquitto
@@ -48,10 +48,10 @@ services:
       - MQTT_BROKER=mosquitto
       - MISSION_FILE=/app/mission.yaml
     volumes:
-      - ./missions/${MISSION}.yaml:/app/mission.yaml:ro
+      - ../missions/${MISSION}.yaml:/app/mission.yaml:ro
 
   satellite:
-    build: services/satellite
+    build: ../modules/satellite
     container_name: spacesim-satellite-1
     depends_on:
       - mosquitto
@@ -62,10 +62,10 @@ services:
       - MQTT_BROKER=mosquitto
       - MISSION_FILE=/app/mission.yaml
     volumes:
-      - ./missions/${MISSION}.yaml:/app/mission.yaml:ro
+      - ../missions/${MISSION}.yaml:/app/mission.yaml:ro
 
   satellite-2:
-    build: services/satellite
+    build: ../modules/satellite
     container_name: spacesim-satellite-2
     depends_on:
       - mosquitto
@@ -76,10 +76,10 @@ services:
       - MQTT_BROKER=mosquitto
       - MISSION_FILE=/app/mission.yaml
     volumes:
-      - ./missions/${MISSION}.yaml:/app/mission.yaml:ro
+      - ../missions/${MISSION}.yaml:/app/mission.yaml:ro
 
   groundstation:
-    build: ../services/groundstation
+    build: ../modules/groundstation
     depends_on:
       - mosquitto
       - influxdb

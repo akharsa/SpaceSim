@@ -1,14 +1,23 @@
 # Makefile for SpaceSim - convenience wrapper around docker compose
 
-COMPOSE_FILE := infrastructure/docker-compose.yml
-DC := docker compose -f $(COMPOSE_FILE)
+# Load environment variables from .env file if it exists
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
 
-.PHONY: help up up-no-build build down down-volumes restart logs logs-service ps exec shell clean install gen-compose
+COMPOSE_BASE := -f simulator/docker-compose.yml -f simulator/telemetry_bridge.yml -f simulator/visualizer.yml
+# include generated mission override if present
+COMPOSE_MISSION := $(if $(wildcard simulator/compose.mission.yml),-f simulator/compose.mission.yml,)
+DC := docker compose $(COMPOSE_BASE) $(COMPOSE_MISSION)
+
+.PHONY: help up up-no-build build down down-volumes restart logs logs-service ps exec shell clean install gen-compose up-infra dev
 
 help:
 	@echo "Usage: make <target> [SERVICE=name]"
 	@echo "Targets:"
 	@echo "  install        - create .venv and install repo requirements (runs scripts/setup_env.sh)"
+	@echo "  dev            - start in development mode with live file updates (requires MISSION=<name>)"
 	@echo "  up             - build and start all services in background (requires MISSION=<name>)"
 	@echo "  up-no-build    - start services without building (requires MISSION=<name>)"
 	@echo "  build          - build all service images"
@@ -26,25 +35,39 @@ install:
 	@echo "Running setup_env.sh to create .venv and install requirements..."
 	./scripts/setup_env.sh
 
-.PHONY: gen-compose
+.PHONY: gen-compose up-infra
+
+dev:
+	@echo "Starting in development mode with live file updates..."
+	@echo "Edit files in simulator/visualizer/public/ and they'll update immediately!"
+	@if [ -z "$(MISSION)" ]; then echo "Specify MISSION=<mission-name> (available under missions/)"; exit 1; fi
+	@if [ ! -f "missions/$(MISSION).yaml" ]; then echo "Mission file missions/$(MISSION).yaml not found"; exit 1; fi
+	$(MAKE) gen-compose
+	NODE_ENV=development $(DC) up --build
 
 gen-compose:
 	@if [ -z "$(MISSION)" ]; then echo "Specify MISSION=<mission-name>"; exit 1; fi
 	@if [ ! -f "missions/$(MISSION).yaml" ]; then echo "Mission file missions/$(MISSION).yaml not found"; exit 1; fi
-	python3 scripts/generate_compose_mission.py $(MISSION)
+	@if [ ! -d ".venv" ]; then echo "Virtual environment not found. Run 'make install' first."; exit 1; fi
+	.venv/bin/python scripts/generate_compose_mission.py $(MISSION)
+
+up-infra:
+	@echo "Bringing up simulator services: mosquitto, influxdb, grafana, telemetry_bridge, visualizer"
+	$(DC) up -d --build
 
 up:
-	@# Ensure mission override is generated for missions with more than 2 satellites
+	@# Ensure simulator is running, then generate mission override and start mission services
 	@if [ -z "$(MISSION)" ]; then echo "Specify MISSION=<mission-name> (available under missions/)"; exit 1; fi
 	@if [ ! -f "missions/$(MISSION).yaml" ]; then echo "Mission file missions/$(MISSION).yaml not found"; exit 1; fi
 	$(MAKE) gen-compose
-	$(DC) -f infrastructure/docker-compose.yml -f infrastructure/compose.mission.yml up -d --build
+	$(DC) up -d --build
 
 up-no-build:
+	@# Start simulator and mission services without building
 	@if [ -z "$(MISSION)" ]; then echo "Specify MISSION=<mission-name> (available under missions/)"; exit 1; fi
 	@if [ ! -f "missions/$(MISSION).yaml" ]; then echo "Mission file missions/$(MISSION).yaml not found"; exit 1; fi
 	$(MAKE) gen-compose
-	$(DC) -f infrastructure/docker-compose.yml -f infrastructure/compose.mission.yml up -d
+	$(DC) up -d
 
 build:
 	$(DC) build --parallel

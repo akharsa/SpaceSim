@@ -1,0 +1,31 @@
+services:
+  satellite:
+    image: spacesim-satellite:latest
+  satellite-2:
+    image: spacesim-satellite:latest
+  satellite-3:
+    image: spacesim-satellite:latest
+    container_name: spacesim-satellite-3
+    depends_on:
+    - mosquitto
+    - influxdb
+    - mission-time
+    environment:
+    - SAT_ID=3
+    - MQTT_BROKER=mosquitto
+    - MISSION_FILE=/app/mission.yaml
+    volumes:
+    - ../missions/example_mission.yaml:/app/mission.yaml:ro
+  satellite-4:
+    image: spacesim-satellite:latest
+    container_name: spacesim-satellite-4
+    depends_on:
+    - mosquitto
+    - influxdb
+    - mission-time
+    environment:
+    - SAT_ID=4
+    - MQTT_BROKER=mosquitto
+    - MISSION_FILE=/app/mission.yaml
+    volumes:
+    - ../missions/example_mission.yaml:/app/mission.yaml:ro

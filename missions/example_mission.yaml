@@ -1,9 +1,16 @@
+mission:
+  name: "Demo Mission"
+  description: "Three satellite constellation demonstration"
+  epoch: "2025-01-01T00:00:00Z"  # Mission start time
+  duration_hours: 24  # Mission duration
+  time_scale: 10.0  # 1.0 = real time, >1 = time warp
+
 satellites:
   - sat_id: 1
     name: demo-sat-1
     initial:
-      alt_km: 500.0
-      inc_deg: 0.0
+      alt_km: 700.0
+      inc_deg: 45.0
       raan_deg: 0.0
       argp_deg: 0.0
       true_anom_deg: 0.0
@@ -14,7 +21,7 @@ satellites:
       inc_deg: 45.0
       raan_deg: 0.0
       argp_deg: 0.0
-      true_anom_deg: 90.0
+      true_anom_deg: 90
   - sat_id: 3
     name: demo-sat-3
     initial:
@@ -22,4 +29,12 @@ satellites:
       inc_deg: 45.0
       raan_deg: 0.0
       argp_deg: 0.0
-      true_anom_deg: 90.0
+      true_anom_deg: 180.0
+  - sat_id: 4
+    name: demo-sat-4
+    initial:
+      alt_km: 700.0
+      inc_deg: 45.0
+      raan_deg: 0.0
+      argp_deg: 0.0
+      true_anom_deg: 270.0

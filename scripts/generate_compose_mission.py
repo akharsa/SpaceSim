@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate a docker-compose override that adds satellite services for missions with >2 satellites.
-Writes to infrastructure/compose.mission.yml
+Writes to simulator/compose.mission.yml
 Usage: generate_compose_mission.py <mission-name>
 
 This keeps the base compose (which defines satellite and satellite-2) and adds satellite-3..N
@@ -46,19 +46,19 @@ for i in range(3, count+1):
     svc_name = f"satellite-{i}"
     override['services'][svc_name] = {
         'image': image_tag,
-        'container_name': f"{project}-satellite-{i}",
-        'depends_on': ['mosquitto'],
+        'container_name': f'{project}-satellite-{i}',
+        'depends_on': ['mosquitto', 'influxdb', 'mission-time'],
         'environment': [
-            'MQTT_BROKER=mosquitto',
-            'MQTT_PORT=1883',
-            'TIME_SCALE=1.0',
             f'SAT_ID={i}',
+            'MQTT_BROKER=mosquitto',
+            'MISSION_FILE=/app/mission.yaml'
         ],
-        'volumes': [f'../missions/{mission_name}.yaml:/app/mission.yaml:ro'],
+        'volumes': [f'../missions/{mission_name}.yaml:/app/mission.yaml:ro']
     }
 
-out_path = Path('infrastructure') / 'compose.mission.yml'
-with out_path.open('w') as f:
+# Write output file
+output_file = Path('simulator') / 'compose.mission.yml'
+with output_file.open('w') as f:
     yaml.safe_dump(override, f, sort_keys=False)
 
-print(f"Wrote override compose to {out_path} with {max(0,count-2)} extra satellite services (image={image_tag})")
+print(f"Wrote override compose to {output_file} with {max(0,count-2)} extra satellite services (image={image_tag})")
