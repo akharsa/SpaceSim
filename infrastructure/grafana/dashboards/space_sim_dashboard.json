@@ -1,11 +1,26 @@
 {
   "id": null,
   "uid": "space-sim",
-  "title": "SpaceSim Demo",
+  "title": "Satellite telemetry",
   "timezone": "browser",
   "schemaVersion": 36,
   "version": 1,
   "refresh": "5s",
+  "templating": {
+    "list": [
+      {
+        "name": "sat_id",
+        "type": "query",
+        "label": "Satellite ID",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "datasource": { "type": "influxdb", "uid": "" },
+        "query": "import \"influxdata/influxdb/v1\"\nv1.tagValues(bucket:\"telemetry\", tag:\"sat_id\")",
+        "refresh": 2
+      }
+    ]
+  },
   "panels": [
     {
       "type": "timeseries",
@@ -18,19 +33,19 @@
           "refId": "A",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_x_km\" and r.sat_id == \"1\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_x_km\")"
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_x_km\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_x_km\")"
         },
         {
           "refId": "B",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_y_km\" and r.sat_id == \"1\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_y_km\")"
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_y_km\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_y_km\")"
         },
         {
           "refId": "C",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_z_km\" and r.sat_id == \"1\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_z_km\")"
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"pos_z_km\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_z_km\")"
         }
       ]
     },
@@ -38,14 +53,17 @@
       "type": "timeseries",
       "title": "Battery (%)",
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "fieldConfig": { 
+        "defaults": {}, 
+        "overrides": []
+        },
       "options": {},
       "targets": [
         {
           "refId": "A",
           "queryType": "flux",
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\" and r.sat_id == \"1\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"battery\")"
+          "query": "from(bucket:\"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"satellite\" and r._field == \"battery_pct\" and r.sat_id == \"${sat_id}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"battery\")"
         }
       ]
     }
