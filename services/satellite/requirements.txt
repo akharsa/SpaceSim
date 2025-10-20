@@ -1,0 +1,4 @@
+# lightweight prototype dependencies
+paho-mqtt==2.1.0
+numpy==1.26.4
+# If build issues persist consider using prebuilt wheels or manylinux packages
